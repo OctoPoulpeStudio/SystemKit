@@ -1,5 +1,8 @@
 # Swift.gitignore @ https://github.com/github/gitignore
 
+.build
+.swiftpm
+
 # Xcode
 build/
 *.pbxuser

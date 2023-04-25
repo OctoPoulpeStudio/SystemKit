@@ -71,6 +71,9 @@ public struct Battery {
         case Temperature      = "Temperature"
         /// Time remaining to charge/discharge
         case TimeRemaining    = "TimeRemaining"
+
+        /// Apple Silicon Macs
+        case AppleRawMaxCapacity      = "AppleRawMaxCapacity"
     }
     
     
@@ -153,6 +156,13 @@ public struct Battery {
     // MARK: PUBLIC METHODS - BATTERY
     //--------------------------------------------------------------------------
     
+    public func takeEntryPropertyValue(key: String) -> CFTypeRef? {
+        let prop = IORegistryEntryCreateCFProperty(service,
+                                                   key as CFString,
+                                                   kCFAllocatorDefault,0)
+        return prop?.takeUnretainedValue()
+    }
+    
     
     /**
     Get the current capacity of the battery in mAh. This is essientally the
@@ -161,10 +171,7 @@ public struct Battery {
     https://en.wikipedia.org/wiki/Ampere-hour
     */
     public func currentCapacity() -> Int {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.CurrentCapacity.rawValue as CFString!,
-                                                   kCFAllocatorDefault,0)
-        return prop!.takeUnretainedValue() as! Int
+        takeEntryPropertyValue(key: Key.CurrentCapacity.rawValue) as? Int ?? 0
     }
     
     
@@ -175,10 +182,10 @@ public struct Battery {
     https://en.wikipedia.org/wiki/Ampere-hour
     */
     public func maxCapactiy() -> Int {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.MaxCapacity.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Int
+        if let i = takeEntryPropertyValue(key: Key.AppleRawMaxCapacity.rawValue) as? Int {
+            return i
+        }
+        return takeEntryPropertyValue(key: Key.MaxCapacity.rawValue) as? Int ?? 0
     }
     
     
@@ -190,10 +197,7 @@ public struct Battery {
     https://en.wikipedia.org/wiki/Ampere-hour
     */
     public func designCapacity() -> Int {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.DesignCapacity.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Int
+        takeEntryPropertyValue(key: Key.DesignCapacity.rawValue) as? Int ?? 0
     }
     
     
@@ -203,10 +207,7 @@ public struct Battery {
     https://en.wikipedia.org/wiki/Charge_cycle
     */
     public func cycleCount() -> Int {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.CycleCount.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Int
+        takeEntryPropertyValue(key: Key.CycleCount.rawValue) as? Int ?? 0
     }
     
     
@@ -216,10 +217,7 @@ public struct Battery {
     https://en.wikipedia.org/wiki/Charge_cycle
     */
     public func designCycleCount() -> Int {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                  Key.DesignCycleCount.rawValue as CFString!,
-                                                  kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Int
+        takeEntryPropertyValue(key: Key.DesignCycleCount.rawValue) as? Int ?? 0
     }
     
     
@@ -229,10 +227,7 @@ public struct Battery {
     :returns: True if it is, false otherwise.
     */
     public func isACPowered() -> Bool {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.ACPowered.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Bool
+        takeEntryPropertyValue(key: Key.ACPowered.rawValue) as? Bool ?? false
     }
     
     
@@ -242,10 +237,7 @@ public struct Battery {
     :returns: True if it is, false otherwise.
     */
     public func isCharging() -> Bool {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.IsCharging.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Bool
+        takeEntryPropertyValue(key: Key.IsCharging.rawValue) as? Bool ?? false
     }
     
     
@@ -255,10 +247,7 @@ public struct Battery {
     :returns: True if it is, false otherwise.
     */
     public func isCharged() -> Bool {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.FullyCharged.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Bool
+        takeEntryPropertyValue(key: Key.FullyCharged.rawValue) as? Bool ?? false
     }
     
     
@@ -280,11 +269,8 @@ public struct Battery {
     
     :returns: Time remaining in minutes.
     */
-    public func timeRemaining() -> Int {        
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.TimeRemaining.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        return prop!.takeUnretainedValue() as! Int
+    public func timeRemaining() -> Int {
+        takeEntryPropertyValue(key: Key.TimeRemaining.rawValue) as? Int ?? 0
     }
 
     
@@ -296,7 +282,7 @@ public struct Battery {
     */
     public func timeRemainingFormatted() -> String {
         let time = timeRemaining()
-        return NSString(format: "%d:%02d", time / 60, time % 60) as String
+        return String(format: "%d:%02d", time / 60, time % 60) as String
     }
     
     
@@ -311,11 +297,7 @@ public struct Battery {
     :returns: Battery temperature, by default in Celsius.
     */
     public func temperature(_ unit: TemperatureUnit = .celsius) -> Double {
-        let prop = IORegistryEntryCreateCFProperty(service,
-                                                   Key.Temperature.rawValue as CFString!,
-                                                   kCFAllocatorDefault, 0)
-        
-        var temperature = prop?.takeUnretainedValue() as! Double / 100.0
+        var temperature = (takeEntryPropertyValue(key: Key.Temperature.rawValue) as? Double ?? 0) / 100.0
         
         switch unit {
             case .celsius:
