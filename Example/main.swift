@@ -106,3 +106,194 @@ print("\tTEMPERATURE:     \(battery.temperature())°C")
 print("\tTIME REMAINING:  \(battery.timeRemainingFormatted())")
 
 _ = battery.close()
+
+print("\n// SMC")
+
+let maxTemperatureCelsius = 128.0
+
+enum ANSIColor: String {
+    case Off    = "\u{001B}[0;0m"
+    case Red    = "\u{001B}[0;31m"
+    case Green  = "\u{001B}[0;32m"
+    case Yellow = "\u{001B}[0;33m"
+    case Blue   = "\u{001B}[0;34m"
+}
+
+func warningLevel(value: Double, maxValue: Double) -> (name: String,
+                                                       color: ANSIColor) {
+    let percentage = value / maxValue
+
+    switch percentage {
+    // TODO: Is this safe? Rather, is this the best way to go about this?
+    case -Double.infinity...0: return ("Cool", ANSIColor.Blue)
+    case 0...0.45:             return ("Nominal", ANSIColor.Green)
+    case 0.45...0.75:          return ("Danger", ANSIColor.Yellow)
+    default:                   return ("Crisis", ANSIColor.Red)
+    }
+}
+
+func printTemperatureInformation(known: Bool = true) {
+    print("\n-- Temperature --")
+
+    let sensors: [TemperatureSensor]
+    do {
+        if known {
+            sensors = try SMCKit.allKnownTemperatureSensors().sorted
+                                                           { $0.name < $1.name }
+        } else {
+            sensors = try SMCKit.allUnknownTemperatureSensors()
+        }
+
+    } catch {
+        print(error)
+        return
+    }
+
+
+    let sensorWithLongestName = sensors.max { $0.name.count <
+                                                     $1.name.count }
+
+    guard let longestSensorNameCount = sensorWithLongestName?.name.count else {
+        print("No temperature sensors found")
+        return
+    }
+
+
+    for sensor in sensors {
+        let padding = String(repeating: " ",
+                             count: longestSensorNameCount - sensor.name.count)
+
+        let smcKey  = "(\(sensor.code.toString()))"
+        print("\t\(sensor.name + padding)   \(smcKey)  ", terminator: "")
+
+
+        guard let temperature = try? SMCKit.temperature(sensor.code) else {
+            print("NA")
+            return
+        }
+
+        let warning = warningLevel(value: temperature, maxValue: maxTemperatureCelsius)
+        let level   = "(\(warning.name))"
+        let color   = warning.color
+
+        print("\(color.rawValue)\(temperature)°C \(level)" +
+              "\(ANSIColor.Off.rawValue)")
+    }
+}
+
+func printFanInformation() {
+    print("\n-- Fan --")
+
+    let allFans: [Fan]
+    do {
+        allFans = try SMCKit.allFans()
+    } catch {
+        print(error)
+        return
+    }
+
+    if allFans.count == 0 { print("No fans found") }
+
+    for fan in allFans {
+        print("[id \(fan.id)] \(fan.name)")
+        print("\tMin:      \(fan.minSpeed) RPM")
+        print("\tMax:      \(fan.maxSpeed) RPM")
+
+        guard let currentSpeed = try? SMCKit.fanCurrentSpeed(fan.id) else {
+            print("\tCurrent:  NA")
+            return
+        }
+
+        let warning = warningLevel(value: Double(currentSpeed),
+                                   maxValue: Double(fan.maxSpeed))
+        let level = "(\(warning.name))"
+        let color = warning.color
+        print("\tCurrent:  \(color.rawValue)\(currentSpeed) RPM \(level)" +
+                                                    "\(ANSIColor.Off.rawValue)")
+    }
+}
+
+func printPowerInformation() {
+    let information: BatteryInfo
+    do {
+        information = try SMCKit.batteryInformation()
+    } catch {
+        print(error)
+        return
+    }
+
+    print("\n-- Power --")
+    print("\tAC Present:       \(information.isACPresent)")
+    print("\tBattery Powered:  \(information.isBatteryPowered)")
+    print("\tCharging:         \(information.isCharging)")
+    print("\tBattery Ok:       \(information.isBatteryOk)")
+    print("\tBattery Count:    \(information.batteryCount)")
+}
+
+func printMiscInformation() {
+    print("\n-- Misc --")
+
+    let ODDStatus: Bool
+    do {
+        ODDStatus = try SMCKit.isOpticalDiskDriveFull()
+    } catch SMCKit.SMCError.keyNotFound { ODDStatus = false }
+      catch {
+        print(error)
+        return
+    }
+
+    print("\tDisc in ODD:      \(ODDStatus)")
+}
+
+func printAll() {
+    printTemperatureInformation()
+    printFanInformation()
+    printPowerInformation()
+    printMiscInformation()
+}
+
+func checkKey(key: String) {
+    if key.count != 4 {
+        print("Must be a FourCC (four-character code)")
+        return
+    }
+
+    do {
+        let isValid = try SMCKit.isKeyFound(FourCharCode(fromString: key))
+        let answer = isValid ? "valid" : "invalid"
+
+        print("\(key) is a \(answer) SMC key on this machine")
+    } catch { print(error) }
+}
+
+func setMinFanSpeed(fanId: Int, fanSpeed: Int) {
+    do {
+        let fan = try SMCKit.fan(fanId)
+        let currentSpeed = try SMCKit.fanCurrentSpeed(fanId)
+
+        try SMCKit.fanSetMinSpeed(fanId, speed: fanSpeed)
+
+        print("Min fan speed set successfully")
+        print("[id \(fan.id)] \(fan.name)")
+        print("\tMin (Previous):  \(fan.minSpeed) RPM")
+        print("\tMin (Target):    \(fanSpeed) RPM")
+        print("\tCurrent:         \(currentSpeed) RPM")
+    } catch SMCKit.SMCError.keyNotFound {
+        print("This machine has no fan with id \(fanId)")
+    } catch SMCKit.SMCError.notPrivileged {
+        print("This operation must be invoked as the superuser")
+    } catch SMCKit.SMCError.unsafeFanSpeed {
+        print("Invalid fan speed. Must be <= max fan speed")
+    } catch {
+        print(error)
+    }
+}
+
+do {
+    try SMCKit.open()
+    printAll()
+} catch {
+    print("Failed to open a connection to the SMC")
+    exit(EX_UNAVAILABLE)
+}
+SMCKit.close()

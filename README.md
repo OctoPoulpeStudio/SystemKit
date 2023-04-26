@@ -60,48 +60,81 @@ Sample ouput from
 // MACHINE STATUS
 
 -- CPU --
-	PHYSICAL CORES:  4
-	LOGICAL CORES:   8
-	SYSTEM:          4%
-	USER:            9%
-	IDLE:            85%
-	NICE:            0%
+    PHYSICAL CORES:  4
+    LOGICAL CORES:   8
+    SYSTEM:          5%
+    USER:            10%
+    IDLE:            84%
+    NICE:            0%
 
 -- MEMORY --
-	PHYSICAL SIZE:   16.0GB
-	FREE:            552MB
-	WIRED:           2.97GB
-	ACTIVE:          5.13GB
-	INACTIVE:        5.01GB
-	COMPRESSED:      2.33GB
+    PHYSICAL SIZE:   16.0GB
+    FREE:            67MB
+    WIRED:           3.15GB
+    ACTIVE:          5.11GB
+    INACTIVE:        5.08GB
+    COMPRESSED:      2.58GB
 
 -- SYSTEM --
-	MODEL:           MacBookPro11,4
-	UPTIME:          4d 0h 40m 14s
-	PROCESSES:       890
-	THREADS:         3523
-	LOAD AVERAGE:    [2.78, 2.70, 2.62]
-	MACH FACTOR:     [4.387, 4.859, 4.876]
+    MODEL:           MacBookPro11,4
+    UPTIME:          5d 3h 39m 9s
+    PROCESSES:       878
+    THREADS:         2845
+    LOAD AVERAGE:    ["2.62", "2.71", "3.17"]
+    MACH FACTOR:     [5.628, 5.411, 5.339]
 
 -- POWER --
-	CPU SPEED LIMIT: 100.0%
-	CPUs AVAILABLE:  8
-	SCHEDULER LIMIT: 100.0%
-	THERMAL LEVEL:   Not Published
+    CPU SPEED LIMIT: 100.0%
+    CPUs AVAILABLE:  8
+    SCHEDULER LIMIT: 100.0%
+    THERMAL LEVEL:   Not Published
 
 -- BATTERY --
-	AC POWERED:      true
-	CHARGED:         true
-	CHARGING:        false
-	CHARGE:          100.0%
-	CAPACITY:        9637 mAh
-	MAX CAPACITY:    9637 mAh
-	DESGIN CAPACITY: 8880 mAh
-	CYCLES:          107
-	MAX CYCLES:      1000
-	TEMPERATURE:     31.0°C
-	TIME REMAINING:  0:00
-Program ended with exit code: 0
+    AC POWERED:      true
+    CHARGED:         true
+    CHARGING:        false
+    CHARGE:          100.0%
+    CAPACITY:        9637 mAh
+    MAX CAPACITY:    9637 mAh
+    DESGIN CAPACITY: 8880 mAh
+    CYCLES:          107
+    MAX CYCLES:      1000
+    TEMPERATURE:     31.0°C
+    TIME REMAINING:  0:00
+
+// SMC
+
+-- Temperature --
+    CPU_0_DIE             (TC0F)  59.0°C (Danger)
+    CPU_0_PROXIMITY       (TC0P)  46.0°C (Nominal)
+    ENCLOSURE_BASE_0      (TB0T)  33.0°C (Nominal)
+    ENCLOSURE_BASE_1      (TB1T)  29.0°C (Nominal)
+    ENCLOSURE_BASE_2      (TB2T)  33.0°C (Nominal)
+    HEATSINK_1            (Th1H)  43.0°C (Nominal)
+    HEATSINK_2            (Th2H)  41.0°C (Nominal)
+    MEM_SLOTS_PROXIMITY   (TM0P)  45.0°C (Nominal)
+    MEM_SLOT_0            (TM0S)  44.0°C (Nominal)
+    PALM_REST             (Ts0P)  32.0°C (Nominal)
+
+-- Fan --
+[id 0] Left side  
+    Min:      2160 RPM
+    Max:      6156 RPM
+    Current:  2164 RPM (Nominal)
+[id 1] Right side 
+    Min:      2000 RPM
+    Max:      5700 RPM
+    Current:  1997 RPM (Nominal)
+
+-- Power --
+    AC Present:       true
+    Battery Powered:  false
+    Charging:         false
+    Battery Ok:       true
+    Battery Count:    1
+
+-- Misc --
+    Disc in ODD:      false
 ```
 
 
