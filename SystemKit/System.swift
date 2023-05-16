@@ -25,11 +25,8 @@
 // THE SOFTWARE.
 
 import Darwin
-import Foundation
-
-#if canImport(IOKit.pwr_mgt)
 import IOKit.pwr_mgt
-#endif
+import Foundation
 
 //------------------------------------------------------------------------------
 // MARK: PRIVATE PROPERTIES
@@ -429,7 +426,6 @@ public struct System {
                         100% at normal operation. The OS may limit this time for
                         a percentage less than 100%.
     */
-    #if canImport(IOKit.pwr_mgt)
     public static func CPUPowerLimit() -> (processorSpeed: Double,
                                            processorCount: Int,
                                            schedulerTime : Double) {
@@ -509,7 +505,7 @@ public struct System {
                 return System.ThermalLevel.Unknown
         }
     }
-    #endif
+
 
     //--------------------------------------------------------------------------
     // MARK: PRIVATE METHODS

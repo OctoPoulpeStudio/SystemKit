@@ -24,8 +24,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#if canImport(IOKit)
-import IOKit
+#if canImport(KernelManagement)
+import KernelManagement
 
 //------------------------------------------------------------------------------
 // MARK: GLOBAL PUBLIC PROPERTIES
