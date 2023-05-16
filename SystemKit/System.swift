@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 import Darwin
-import IOKit.pwr_mgt
 import Foundation
 
 //------------------------------------------------------------------------------
@@ -35,18 +34,12 @@ import Foundation
 
 // As defined in <mach/tash_info.h>
 
-private let HOST_BASIC_INFO_COUNT         : mach_msg_type_number_t =
-                      UInt32(MemoryLayout<host_basic_info_data_t>.size / MemoryLayout<integer_t>.size)
-private let HOST_LOAD_INFO_COUNT          : mach_msg_type_number_t =
-                       UInt32(MemoryLayout<host_load_info_data_t>.size / MemoryLayout<integer_t>.size)
-private let HOST_CPU_LOAD_INFO_COUNT      : mach_msg_type_number_t =
-                   UInt32(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
-private let HOST_VM_INFO64_COUNT          : mach_msg_type_number_t =
-                      UInt32(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
-private let HOST_SCHED_INFO_COUNT         : mach_msg_type_number_t =
-                      UInt32(MemoryLayout<host_sched_info_data_t>.size / MemoryLayout<integer_t>.size)
-private let PROCESSOR_SET_LOAD_INFO_COUNT : mach_msg_type_number_t =
-              UInt32(MemoryLayout<processor_set_load_info_data_t>.size / MemoryLayout<natural_t>.size)
+private let HOST_BASIC_INFO_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<host_basic_info_data_t>.size / MemoryLayout<integer_t>.size)
+private let HOST_LOAD_INFO_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<host_load_info_data_t>.size / MemoryLayout<integer_t>.size)
+private let HOST_CPU_LOAD_INFO_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
+private let HOST_VM_INFO64_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+private let HOST_SCHED_INFO_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<host_sched_info_data_t>.size / MemoryLayout<integer_t>.size)
+private let PROCESSOR_SET_LOAD_INFO_COUNT: mach_msg_type_number_t = UInt32(MemoryLayout<processor_set_load_info_data_t>.size / MemoryLayout<natural_t>.size)
 
 
 public struct System {
@@ -316,46 +309,11 @@ public struct System {
                 Double(result.2) / Double(LOAD_SCALE)]
     }
     
-
-    /// Total number of processes & threads
-    public static func processCounts() -> (processCount: Int, threadCount: Int) {
-        let data = System.processorLoadInfo()
-        return (Int(data.task_count), Int(data.thread_count))
-    }
-    
     
     /// Size of physical memory on this machine
     public static func physicalMemory(_ unit: Unit = .gigabyte) -> Double {
         return Double(System.hostBasicInfo().max_mem) / unit.rawValue
     }
-    
-    
-    /**
-    System memory usage (free, active, inactive, wired, compressed).
-    */
-    public static func memoryUsage() -> (free       : Double,
-                                         active     : Double,
-                                         inactive   : Double,
-                                         wired      : Double,
-                                         compressed : Double) {
-        let stats = System.VMStatistics64()
-        
-        let free     = Double(stats.free_count) * Double(PAGE_SIZE)
-                                                        / Unit.gigabyte.rawValue
-        let active   = Double(stats.active_count) * Double(PAGE_SIZE)
-                                                        / Unit.gigabyte.rawValue
-        let inactive = Double(stats.inactive_count) * Double(PAGE_SIZE)
-                                                        / Unit.gigabyte.rawValue
-        let wired    = Double(stats.wire_count) * Double(PAGE_SIZE)
-                                                        / Unit.gigabyte.rawValue
-        
-        // Result of the compression. This is what you see in Activity Monitor
-        let compressed = Double(stats.compressor_page_count) * Double(PAGE_SIZE)
-                                                        / Unit.gigabyte.rawValue
-        
-        return (free, active, inactive, wired, compressed)
-    }
-    
 
     /// How long has the system been up?
     public static func uptime() -> (days: Int, hrs: Int, mins: Int, secs: Int) {
@@ -399,113 +357,6 @@ public struct System {
 
         return (days, hrs, mins, secs)
     }
-
-
-    //--------------------------------------------------------------------------
-    // MARK: POWER
-    //--------------------------------------------------------------------------
-
-
-    /**
-    As seen via 'pmset -g therm' command.
-
-    Via <IOKit/pwr_mgt/IOPMLib.h>:
-
-        processorSpeed: Defines the speed & voltage limits placed on the CPU.
-                        Represented as a percentage (0-100) of maximum CPU
-                        speed.
-
-        processorCount: Reflects how many, if any, CPUs have been taken offline.
-                        Represented as an integer number of CPUs (0 - Max CPUs).
-
-                        NOTE: This doesn't sound quite correct, as pmset treats
-                              it as the number of CPUs available, NOT taken
-                              offline. The return value suggests the same.
-
-        schedulerTime:  Represents the percentage (0-100) of CPU time available.
-                        100% at normal operation. The OS may limit this time for
-                        a percentage less than 100%.
-    */
-    public static func CPUPowerLimit() -> (processorSpeed: Double,
-                                           processorCount: Int,
-                                           schedulerTime : Double) {
-        var processorSpeed = -1.0
-        var processorCount = -1
-        var schedulerTime  = -1.0
-
-        let status = UnsafeMutablePointer<Unmanaged<CFDictionary>?>.allocate(capacity: 1)
-
-        let result = IOPMCopyCPUPowerStatus(status)
-
-        #if DEBUG
-            // TODO: kIOReturnNotFound case as seen in pmset
-            if result != kIOReturnSuccess {
-                print("ERROR - \(#file):\(#function) - kern_result_t = "
-                        + "\(result)")
-            }
-        #endif
-
-
-        if result == kIOReturnSuccess,
-           let data = status.move()?.takeUnretainedValue() {
-                let dataMap = data as NSDictionary
-
-                // TODO: Force unwrapping here should be safe, as
-                //       IOPMCopyCPUPowerStatus() defines the keys, but the
-                //       the cast (from AnyObject) could be problematic
-                processorSpeed = dataMap[kIOPMCPUPowerLimitProcessorSpeedKey]!
-                                                                      as! Double
-                processorCount = dataMap[kIOPMCPUPowerLimitProcessorCountKey]!
-                                                                      as! Int
-                schedulerTime  = dataMap[kIOPMCPUPowerLimitSchedulerTimeKey]!
-                                                                      as! Double
-        }
-
-        status.deallocate()
-
-        return (processorSpeed, processorCount, schedulerTime)
-    }
-
-
-    /// Get the thermal level of the system. As seen via 'pmset -g therm'
-    public static func thermalLevel() -> System.ThermalLevel {
-        var thermalLevel: UInt32 = 0
-
-        let result = IOPMGetThermalWarningLevel(&thermalLevel)
-
-        if result == kIOReturnNotFound {
-            return System.ThermalLevel.NotPublished
-        }
-
-
-        #if DEBUG
-            if result != kIOReturnSuccess {
-                print("ERROR - \(#file):\(#function) - kern_result_t = "
-                        + "\(result)")
-            }
-        #endif
-
-
-        // TODO: Thermal warning level values no longer available through
-        //       IOKit.pwr_mgt module as of Xcode 6.3 Beta 3. Not sure if thats
-        //       intended behaviour or a bug, will investigate. For now
-        //       hardcoding values, will move all power related calls to a
-        //       separate struct.
-        switch thermalLevel {
-            case 0:
-                // kIOPMThermalWarningLevelNormal
-                return System.ThermalLevel.Normal
-            case 5:
-                // kIOPMThermalWarningLevelDanger
-                return System.ThermalLevel.Danger
-            case 10:
-                // kIOPMThermalWarningLevelCrisis
-                return System.ThermalLevel.Crisis
-            default:
-                return System.ThermalLevel.Unknown
-        }
-    }
-
 
     //--------------------------------------------------------------------------
     // MARK: PRIVATE METHODS
@@ -580,84 +431,6 @@ public struct System {
             }
         #endif
 
-        return data
-    }
-    
-    
-    fileprivate static func processorLoadInfo() -> processor_set_load_info {
-        // NOTE: Duplicate load average and mach factor here
-        
-        var pset   = processor_set_name_t()
-        var result = processor_set_default(machHost, &pset)
-        
-        if result != KERN_SUCCESS {
-            #if DEBUG
-                print("ERROR - \(#file):\(#function) - kern_result_t = "
-                        + "\(result)")
-            #endif
-
-            return processor_set_load_info()
-        }
-
-        
-        var count    = PROCESSOR_SET_LOAD_INFO_COUNT
-        let info_out = processor_set_load_info_t.allocate(capacity: 1)
-        
-        result = info_out.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-            processor_set_statistics(pset,
-                                     PROCESSOR_SET_LOAD_INFO,
-                                     $0,
-                                     &count)
-        }
-
-        #if DEBUG
-            if result != KERN_SUCCESS {
-                print("ERROR - \(#file):\(#function) - kern_result_t = "
-                        + "\(result)")
-            }
-        #endif
-
-
-        // This is isn't mandatory as I understand it, just helps keep the ref
-        // count correct. This is because the port is to the default processor
-        // set which should exist by default as long as the machine is running
-        mach_port_deallocate(mach_task_self_, pset)
-
-        let data = info_out.move()
-        info_out.deallocate()
-        
-        return data
-    }
-    
-    
-    /**
-    64-bit virtual memory statistics. This should apply to all Mac's that run
-    10.9 and above. For iOS, iPhone 5S, iPad Air & iPad Mini 2 and on.
-    
-    Swift runs on 10.9 and above, and 10.9 is x86_64 only. On iOS though its 7
-    and above, with both ARM & ARM64.
-    */
-    fileprivate static func VMStatistics64() -> vm_statistics64 {
-        var size     = HOST_VM_INFO64_COUNT
-        let hostInfo = vm_statistics64_t.allocate(capacity: 1)
-        
-        let result = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
-            host_statistics64(machHost,
-                              HOST_VM_INFO64,
-                              $0,
-                              &size)
-        }
-
-        let data = hostInfo.move()
-        hostInfo.deallocate()
-        
-        #if DEBUG
-            if result != KERN_SUCCESS {
-                print("ERROR - \(#file):\(#function) - kern_result_t = "
-                    + "\(result)")
-            }
-        #endif
-        
         return data
     }
 }
