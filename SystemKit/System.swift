@@ -131,7 +131,7 @@ public struct System {
     
     /**
     Get CPU usage (system, user, idle, nice). Determined by the delta between
-    the current and last call. Thus, first call will always be inaccurate.
+    the current and last call. Thus, first call will always be inaccurate. This info must not be retrieved more than once per second, otherwise the returned data will be NaN
     */
     public mutating func usageCPU() -> (system : Double,
                                         user   : Double,
